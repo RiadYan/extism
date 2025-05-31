@@ -1,6 +1,7 @@
 use std::{
     any::Any,
     collections::{BTreeMap, BTreeSet},
+    path::Path,
     sync::TryLockError,
 };
 
@@ -68,15 +69,15 @@ impl CompiledPlugin {
         match &builder.options.cache_config {
             Some(None) => (),
             Some(Some(path)) => {
-                config.cache_config_load(path)?;
+                config.cache(Some(Cache::from_file(Some(&path)).unwrap()));
             }
             None => {
                 if let Ok(env) = std::env::var("EXTISM_CACHE_CONFIG") {
                     if !env.is_empty() {
-                        config.cache_config_load(&env)?;
+                        config.cache(Some(Cache::from_file(Some(Path::new(&env))).unwrap()));
                     }
                 } else {
-                    config.cache_config_load_default()?;
+                    config.cache(Some(Cache::new(CacheConfig::default()).unwrap()));
                 }
             }
         }
@@ -352,6 +353,7 @@ fn relink(
                     ExternType::Global(t) => ("global", t.content().to_string()),
                     ExternType::Table(t) => ("table", t.element().to_string()),
                     ExternType::Memory(_) => ("memory", String::new()),
+                    ExternType::Tag(t) => ("tag", t.ty().to_string()),
                 };
                 anyhow::bail!(
                     "Invalid {kind} import from extism:host/env: {} {ty}\n\n\
